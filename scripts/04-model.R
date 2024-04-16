@@ -13,6 +13,7 @@ library(aod)
 
 Fire_Incidents_Data_Clean <- read_csv("data/analysis_data/Cleaned_Fire_Incidents_Data.csv")
 # model 1
+
 # Run the logistic regression using stepwise eliminaton
 Stepwise_logistic <- step(glm(Risk_type_binary ~ Building_Status_Cat + Business_Impact_Cat + Fire_Alarm_System_Operation_Cat + Method_Of_Fire_Control_Cat + Smoke_Alarm_at_Fire_Origin_Cat + Sprinkler_System_Presence_Cat+ arrival_to_fire_control_time + alarm_to_arrival_time + Number_of_responding_apparatus+ Number_of_responding_personnel, data = Fire_Incidents_Data_Clean, family = binomial), direction = "both", trace = FALSE)
 
@@ -24,11 +25,6 @@ confint(Stepwise_logistic)
 wald.test(b= coef(Stepwise_logistic), Sigma = vcov(Stepwise_logistic), Terms= 4:6)
 
 Fire_Incidents_Data_Clean$pred <- predict(Stepwise_logistic, type='response')
-
-
-# Create a dataframe for plotting
-plot_df <- data.frame(Building_Status_Cat = unique(Fire_Incidents_Data_Clean$Building_Status_Cat),
-                      Predicted_Prob = predict(Stepwise_logistic, newdata = data.frame(Building_Status_Cat = unique(Fire_Incidents_Data_Clean$Building_Status_Cat)), type = "response"))
 
 
 
