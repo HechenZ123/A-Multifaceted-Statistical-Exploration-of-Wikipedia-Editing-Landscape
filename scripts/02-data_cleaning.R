@@ -1,3 +1,7 @@
+#### Preamble ####
+# Purpose: Cleans the raw plane data recorded
+# Date: 10 April 2024 
+# Contact: hechen.zhang@mail.utoronto.ca
 # Workplace Setup
 library(readr)
 library(dplyr)

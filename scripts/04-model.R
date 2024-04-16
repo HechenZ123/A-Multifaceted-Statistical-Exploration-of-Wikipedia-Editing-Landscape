@@ -1,3 +1,7 @@
+#### Preamble ####
+# Purpose: A Logistic Model and two Linear Models of Analysis Data
+# Date: 11 April 2024
+# Contact: hechen.zhang@mail.utoronto.ca
 # Workplace Setup
 library(readr)
 library(dplyr)

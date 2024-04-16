@@ -1,3 +1,8 @@
+#### Preamble ####
+# Purpose: Downloads and saves the data from OpenDataToronto
+# Date: 6 April 2024
+# Contact: hechen.zhang@mail.utoronto.ca
+
 # Workplace Setup
 library(readr)
 library(dplyr)
