@@ -29,12 +29,11 @@ resources <- list_package_resources("64a26694-01dc-4ec3-aa87-ad8509604f50")
 datastore_resources <- filter(resources, tolower(format) %in% c('csv', 'geojson'))
 
 # load the first datastore resource as a sample
-fire_incident <- filter(datastore_resources, row_number()==1) %>% get_resource()
-
+Data <- filter(datastore_resources, row_number()==1) %>% get_resource()
 
 write_csv(
-  x = fire_incident,
+  x = Data,
   file = "data/raw_data/raw_fire_incident_data.csv"
 )
 
-head(fire_incident)
+glimpse(Data)
