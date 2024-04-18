@@ -1,0 +1,581 @@
+---
+title: "Predicting Fire Incident Impact in Toronto: Financial Losses and Casualties"
+author: Hechen Zhang
+thanks: "Code and data are available at: https://github.com/HechenZ123/Analyzing-Fire-Incident-Risks-in-Toronto.git"
+date: 'today'
+date-format: 'long'
+editor: visual
+abstract: "The present study examined the Fire incident data for the City of Toronto in order to elucidate any associations between fire incidents and numerous independent variables. The research revealed that these variables exhibit a significant predictive capability in determining the probability and consequences of fire occurrences, encompassing estimated financial damage and casualties. The study identified building status, business impact, fire alarm system operation, method of fire control, and presence of smoke alarms at the fire origin as noteworthy factors for predicting fire incidents. In addition, the arrival time to fire control and the duration from alarm to arrival were found to be significant predictors of fire incidents, emphasizing the criticality of a prompt response time. The results of the study make a valuable contribution to the existing body of knowledge on fire incidents and bear significant implications for public safety and strategies aimed at prevention. Subsequent research endeavors may concentrate on the development of a prognostic framework for fire occurrences derived from the noteworthy determinants unveiled in this investigation, as well as an assessment of the efficacy of various fire mitigation tactics."
+format: pdf
+toc: true
+render:
+  latex_engine: xelatex
+number-sections: true
+bibliography: references.bib
+---
+
+\newpage
+
+# Introduction
+
+The occurrence of fires represents a considerable risk to civic welfare, as they have the potential to result in loss of life and property damage, with consequent implications for the economic stability of affected regions. Annually in Toronto, the fire department is confronted with a substantial number of fire incidents, underscoring the significance of understanding the root causes of these occurrences. Prior research has explored different elements of fire incidents, including their origins, consequences, and the time it takes for a response. The current literature lacks information on how fire incidents are related to different factors like building status, business impact, fire alarm system operation, method of fire control, presence of a smoke alarm at fire origin, presence of a sprinkler system, time taken to control the fire, and time taken for rescue teams to arrive after the alarm. This research aims to analyze fire incident data for Toronto and predict potential financial losses and injuries based on certain factors.
+
+The document includes Data Section with an overview of the data and methods used in the study, including data cleansing, reformatting, and statistical analysis. The Results Section includes analysis results such as descriptive statistics, chi-square tests, ANOVA tests, and logistic regression. In the Discussion Section, I summarized the research findings, discussed study limitations, and recommended future research directions. This research aims to identify the correlation between fire incidents and independent factors and forecast financial loss and casualties. The findings from this study shows that the status of building, impact on business after fire, the method used to control the fire, if there is smoking alarm at the sight of incident, the time taken by the fire fighters to response and the time taken to control the fires are the major variables that increase the risk of fatalities and money loss in the fire incidents. The results from this study can help to reduce the fire incidents in future by taking the measurable steps by both the civilians and the fire department. The following sections will further cover the data and methods use in the analysis, results of the study comprising tables and graphs and the discussion.
+
+# Data
+
+```{r,warning=FALSE, message=FALSE, echo=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(psych)
+library(broom)
+library(tidyverse)
+library(patchwork)
+library(arrow)
+library(kableExtra)
+library(opendatatoronto)
+library(grid)
+
+```
+
+The data was extracted using the package @gelfand2020opendatatoronto. The fire incidents in the dataset was reported between the year 2011 to 2022 by Toronto fire services.The data was transferred to Ontario fire marshal for reporting purposes and used for analysis.
+
+```{r, warning=FALSE, results='hide', echo=FALSE, message=FALSE}
+
+# Load Raw Data
+Data <- read.csv(here::here("data/raw_data/raw_fire_incident_data.csv"))
+
+# Select only the desired variables
+desired_variables <- c("Civilian_Casualties", "Estimated_Dollar_Loss", "Building_Status", "Business_Impact", "Fire_Alarm_System_Operation", "Method_Of_Fire_Control", "Smoke_Alarm_at_Fire_Origin", "Sprinkler_System_Presence", "TFS_Arrival_Time", "TFS_Alarm_Time", "Fire_Under_Control_Time", "Number_of_responding_apparatus", "Number_of_responding_personnel")
+
+Fire_Incidents_Data <- Data %>%
+  select(all_of(desired_variables))
+
+# Check the data types of all variables
+glimpse(Fire_Incidents_Data)
+
+```
+
+The dataset contains 29425 observations and 43 variables. However, for this analysis, we will focus on the following variables as shown in @tbl-descvar below.
+
+```{r, warning=FALSE, echo=FALSE}
+table_data <- data.frame(
+  "Variable Name" = c(
+    "Civilian Casualties",
+    "Estimated Dollar Loss",
+    "Building Status",
+    "Business Impact",
+    "Fire Alarm System Operation",
+    "Method Of Fire Control",
+    "Smoke Alarm at Fire Origin",
+    "Sprinkler System Presence",
+    "TFS Alarm Time",
+    "TFS Arrival Time",
+    "Fire Under Control Time",
+    "Number of responding apparatus",
+    "Number of responding personnel"
+  ),
+  "Description" = c(
+    "Civilian casualties observed at the scene",
+    "Estimated dollar loss",
+    "OFM Building status code and description",
+    "OFM Business Impact code and description",
+    "OFM Fire Alarm System Operation code and description",
+    "OFM Method Of Fire Control code and description",
+    "OFM Smoke Alarm at Fire Origin code and description",
+    "OFM Sprinkler System Presence code and description",
+    "Timestamp of when TFS was notified of the incident",
+    "Timestamp of first arriving unit to incident",
+    "Timestamp of fire under control",
+    "Number of TFS responding apparatus",
+    "Number of TFS responding personnel"
+  )
+)
+
+```
+
+```{r, echo=FALSE}
+#| label: tbl-descvar
+#| tbl-cap: "Description of variables used in the analysis"
+# Create the table data
+table_data |> kable( digits = 2,
+      booktabs = TRUE, linesep = "", escape = FALSE,
+      col.names = c("Variable Name", "Description")) |> kable_styling()
+```
+
+The chosen variables in this analysis offer understanding into the consequences of fire incidents, how the TFS reacts, and the elements influencing the spread and management of fires. It's worth mentioning that no personal information is included, and specific addresses have been combined to the nearest major or minor intersection to protect privacy. This paper employs the R programming language [@citeR] for its analysis. Various libraries such as tidyverse [@tidyverse], dplyr [@dplyr], readr [@readr], ggplot2 [@ggplot2], knitr [@knitr], kableExtra [@kableExtra], grid [@grid], gridExtra [@gridExtra], psych [@psych], arrow [@arrow], patchwork [@patchwork] and broom [@broom] were utilized. The information is brought in from a CSV file, then processed by eliminating any empty values and generating new variables. The information is then examined using statistical techniques such as summary statistics, chi-square tests, ANOVA tests, logistic regression, and linear regression. The findings are displayed through tables and figures generated with ggplot2, knit, and kableExtra. The ultimate model is chosen through step-by-step removal of variables.
+
+The missing observations were identified and then removed from the data. The final sample size for the data was 14264.
+
+```{r, results='hide', echo=FALSE}
+# Check for missing values
+colSums(is.na(Fire_Incidents_Data))
+
+# Examine which variable has how many missing values
+missing_values <- colSums(is.na(Fire_Incidents_Data))
+data.frame(Variable = names(missing_values), Missing_Values = as.integer(missing_values))
+
+# Remove all missing and NA values from the data
+Fire_Incidents_Data_Clean <- Fire_Incidents_Data %>%
+  drop_na()
+
+# Check the number of rows in the cleaned data
+nrow(Fire_Incidents_Data_Clean)
+```
+
+## Measurements:
+
+The measurement of this study involves creating new variables and recoding existing ones to better understand their relationship with fire incidents. We created a new variable for risk type based on the criteria of civilian casualties, and estimated dollar loss. The risk type was divided into five categories Low, very low, moderate, high, and very high. We also recorded existing variables such as building status, business impact, fire alarm system operation, method of fire control, smoke alarm at fire origin, and sprinkler system presence into categorical variables. We alos calculated the difference between TFS arrival time and TFS alarm time to determine the alarm to arrival time and the difference between fire under control time and TFS arrival time to determine the arrival to fire control time.
+
+```{r, results='hide', echo=FALSE}
+# Create a new variable Risk_Type based on the criteria
+Fire_Incidents_Data_Clean <- Fire_Incidents_Data_Clean %>%
+  mutate(
+    Risk_type = case_when(
+      Civilian_Casualties == 0  & Estimated_Dollar_Loss < 5000 ~ "Very Low",
+      Civilian_Casualties == 0 & Estimated_Dollar_Loss >= 5000 & Estimated_Dollar_Loss < 10000 ~ "Low",
+      (Civilian_Casualties == 0 & Estimated_Dollar_Loss >= 10000 & Estimated_Dollar_Loss < 50000) |
+        (Civilian_Casualties == 0 & Estimated_Dollar_Loss < 50000) ~ "Moderate",
+      (Civilian_Casualties == 0 & Estimated_Dollar_Loss >= 50000 & Estimated_Dollar_Loss < 100000) |
+        (Civilian_Casualties > 0 & Estimated_Dollar_Loss < 100000) ~ "High",
+      Civilian_Casualties > 0 | Estimated_Dollar_Loss >= 100000 ~ "Very High"
+    )
+  ) %>%
+  drop_na()
+
+# Check the number of rows in the cleaned data
+nrow(Fire_Incidents_Data_Clean)
+
+glimpse(Fire_Incidents_Data_Clean)
+table(Fire_Incidents_Data_Clean$Building_Status)
+table(Fire_Incidents_Data_Clean$Business_Impact)
+table(Fire_Incidents_Data_Clean$Fire_Alarm_System_Operation)
+table(Fire_Incidents_Data_Clean$Method_Of_Fire_Control)
+table(Fire_Incidents_Data_Clean$Smoke_Alarm_at_Fire_Origin)
+table(Fire_Incidents_Data_Clean$Sprinkler_System_Presence)
+Fire_Incidents_Data_Clean$Building_Status_Cat <- factor(Fire_Incidents_Data_Clean$Building_Status, levels = c("01 - Normal (no change)", "02 - Under Renovation", "03 - Under Construction", "05 - Abandoned, vacant (long term)", "08 - Not Applicable", "09 - Undetermined"), labels = c("Normal", "Under Renovation", "Under Construction", "Abandoned", "Not Applicable", "Undetermined"))
+levels(Fire_Incidents_Data_Clean$Building_Status_Cat) <- list(
+  "Normal" = c("Normal"),
+  "Under Renovation/Construction" = c( "Under Renovation", "Under Construction"),
+  "Abandon" = c("Abandoned"),
+  "Undetermined/Not Applicable" = c("Not Applicable", "Undetermined"))
+# Create a new variable that combines the levels
+Fire_Incidents_Data_Clean$Business_Impact_Cat <- factor(Fire_Incidents_Data_Clean$Business_Impact, levels = c("1 - No business interruption", "2 - May resume operations within a week", "3 - May resume operations within a month", "4 - May resume operations within a year", "5 - May not resume operations", "8 - Not applicable (not a business)", "9 - Undetermined"), labels = c("No Interruption", "Resume in a week", "Resume in a month", "Resume in a year", "May not resume", "Not applicable", "Undetermined"))
+
+# Combine the levels as you described
+levels(Fire_Incidents_Data_Clean$Business_Impact_Cat) <- list(
+  "No Interruption" = c("No Interruption"),
+  "May Resume" = c("Resume in a week", "Resume in a month", "Resume in a year"),
+  "May not resume" = c("May not resume"),
+  "Undetermined/Not Applicable" = c("Not applicable", "Undetermined"))
+Fire_Incidents_Data_Clean$Fire_Alarm_System_Operation_Cat <- factor(Fire_Incidents_Data_Clean$Fire_Alarm_System_Operation, levels = c("1 - Fire alarm system operated", "2 - Fire alarm system did not operate", "8 - Not applicable (no system)", "9 - Fire alarm system operation undetermined"), labels = c("Operated", "Did not operate", "Not Applicable", "Undetermined"))
+levels(Fire_Incidents_Data_Clean$Fire_Alarm_System_Operation_Cat) <- list(
+  "Operated" = c("Operated"),
+  "Did not operate" = c("Did not operate"),
+  "Undetermined/Not Applicable" = c("Not Applicable", "Undetermined"))
+
+Fire_Incidents_Data_Clean$Method_Of_Fire_Control_Cat <- factor(Fire_Incidents_Data_Clean$Method_Of_Fire_Control, levels = c("1 - Extinguished by fire department", "2 - Extinguished by automatic system", "3 - Extinguished by occupant", "4 - Fire self extinguished", "5 - Action taken unclassified"), labels = c("Fire department", "Automatic system", "Occupant", "Self extinguished", "Undetermined"))
+Fire_Incidents_Data_Clean$Smoke_Alarm_at_Fire_Origin_Cat <- factor(Fire_Incidents_Data_Clean$Smoke_Alarm_at_Fire_Origin, levels = c("1 - Floor/suite of fire origin: No smoke alarm", "1 - No smoke alarm", "2 - Floor/suite of fire origin: Smoke alarm present and operated", "2 - Smoke alarm present and operated","3 - Floor/suite of fire origin: Smoke alarm present did not operate", "3 - Smoke alarm present did not operate", "4 - Floor/suite of fire origin: Smoke alarm present, operation undetermined","4 - Smoke alarm present, operation undetermined", "9 - Floor/suite of fire origin: Smoke alarm presence undetermined", "9 - Smoke alarm presence undetermined"), labels = c("No smoke alarm", "No smoke alarm1", "Presented and operated" , "Presented and operated1", "Did not operate", "Did not operate1", "Undetermined", "Undetermined1", "Undetermined2", "Undetermined3"))
+
+
+levels(Fire_Incidents_Data_Clean$Smoke_Alarm_at_Fire_Origin_Cat) <- list(
+  "No smoke alarm" = c("No smoke alarm", "No smoke alarm1"),
+  "Present and operated" = c("Presented and operated" , "Presented and operated1"),
+  "Did not operate" = c("Did not operate", "Did not operate1"),
+  "Undetermined" = c("Undetermined", "Undetermined1", "Undetermined2", "Undetermined3"))
+
+Fire_Incidents_Data_Clean$Sprinkler_System_Presence_Cat <- factor(Fire_Incidents_Data_Clean$Sprinkler_System_Presence, levels = c("1 - Full sprinkler system present", "2 - Partial sprinkler system present", "3 - No sprinkler system", "9 - Undetermined"), labels = c("Full sprinkler system", "Partial sprinkler system", "No sprinkler system", "Undetermined"))
+# Check the new categorical variable
+table(Fire_Incidents_Data_Clean$Building_Status_Cat)
+table(Fire_Incidents_Data_Clean$Business_Impact_Cat)
+table(Fire_Incidents_Data_Clean$Fire_Alarm_System_Operation_Cat)
+table(Fire_Incidents_Data_Clean$Method_Of_Fire_Control_Cat)
+table(Fire_Incidents_Data_Clean$Smoke_Alarm_at_Fire_Origin_Cat)
+table(Fire_Incidents_Data_Clean$Sprinkler_System_Presence_Cat)
+
+
+# Calculate the difference between TFS_Arrival_Time_POSIX and TFS_Alarm_Time_POSIX
+Fire_Incidents_Data_Clean$TFS_Alarm_Time1 <- as.POSIXct(Fire_Incidents_Data_Clean$TFS_Alarm_Time, format = "%Y-%m-%dT%H:%M:%S")
+Fire_Incidents_Data_Clean$TFS_Arrival_Time1 <- as.POSIXct(Fire_Incidents_Data_Clean$TFS_Arrival_Time, format = "%Y-%m-%dT%H:%M:%S")
+
+Fire_Incidents_Data_Clean$alarm_to_arrival_time <- difftime(Fire_Incidents_Data_Clean$TFS_Arrival_Time1, Fire_Incidents_Data_Clean$TFS_Alarm_Time1, units = "mins")
+
+Fire_Incidents_Data_Clean$alarm_to_arrival_time <- as.numeric(Fire_Incidents_Data_Clean$alarm_to_arrival_time)
+
+
+Fire_Incidents_Data_Clean$Fire_Under_Control_Time1 <- as.POSIXct(Fire_Incidents_Data_Clean$Fire_Under_Control_Time, format = "%Y-%m-%dT%H:%M:%S")
+
+Fire_Incidents_Data_Clean$arrival_to_fire_control_time_hours <- difftime(Fire_Incidents_Data_Clean$Fire_Under_Control_Time1, Fire_Incidents_Data_Clean$TFS_Arrival_Time1, units = "hours")
+
+Fire_Incidents_Data_Clean$arrival_to_fire_control_time <-  as.numeric(Fire_Incidents_Data_Clean$arrival_to_fire_control_time_hours)
+
+Fire_Incidents_Data_Clean <- Fire_Incidents_Data_Clean %>%
+  filter(alarm_to_arrival_time <= 200)
+
+Fire_Incidents_Data_Clean <- na.omit(Fire_Incidents_Data_Clean)
+# Check the number of rows in the cleaned data
+nrow(Fire_Incidents_Data_Clean)
+```
+
+Below are some descriptive statistics and graphs for the variables selected:
+
+```{r, echo=FALSE}
+summary_stats <- data.frame(
+  Mean = round(sapply(Fire_Incidents_Data_Clean[, c("arrival_to_fire_control_time", "alarm_to_arrival_time", "Number_of_responding_apparatus", "Number_of_responding_personnel", "Estimated_Dollar_Loss")], mean), 2),
+  SD = round(sapply(Fire_Incidents_Data_Clean[, c("arrival_to_fire_control_time", "alarm_to_arrival_time", "Number_of_responding_apparatus", "Number_of_responding_personnel", "Estimated_Dollar_Loss")], sd), 2),
+  Median = round(sapply(Fire_Incidents_Data_Clean[, c("arrival_to_fire_control_time", "alarm_to_arrival_time", "Number_of_responding_apparatus", "Number_of_responding_personnel", "Estimated_Dollar_Loss")], median), 2),
+  Min = round(sapply(Fire_Incidents_Data_Clean[, c("arrival_to_fire_control_time", "alarm_to_arrival_time", "Number_of_responding_apparatus", "Number_of_responding_personnel", "Estimated_Dollar_Loss")], min), 2),
+  Max = round(sapply(Fire_Incidents_Data_Clean[, c("arrival_to_fire_control_time", "alarm_to_arrival_time", "Number_of_responding_apparatus", "Number_of_responding_personnel", "Estimated_Dollar_Loss")], max), 2)
+)
+```
+
+@tbl-summarystat presents an overview of statistical data pertaining to four variables associated with occurrences of fire incidents. The average time it takes for fire control teams to arrive at the scene is 0.25 hours, with a standard deviation of 0.79. The time it takes to control fire from arrival is 5 hours, with a standard deviation of 1,39 hours. Additionally, the average number of fire trucks or other vehicles dispatched to a fire incident is approximately 9, while the average number of firefighters or other personnel dispatched to a fire incident is approximately 31. The average estimated dollar loss is 44,743.18, with the standard deviation of 505,450.18 dollars which shows that the estimated dollar loss is highly skewed.
+
+```{r, echo=FALSE}
+#| label: tbl-summarystat
+#| tbl-cap: "Summary Statistics Table"
+rownames (summary_stats) = c( "Arrival to fire control time", "Alarm to arrival time", "Number of responding appartaus", "Number of responding personnel", "Estimated loss of dollar")
+summary_stats |>
+kable (col.names = c("Mean", "SD", "Median", "Min", "Max"), digits =2, format.args = list(big.mark = ","), booktabs = TRUE) |> kable_styling()
+```
+
+The dependent variable risk type is shows in @fig-risktypefreq, indicates that 1823 with high risk, 1444 with low risk, 2476 with moderate risk, 1291 with very high risk and 7230 most of with very low risk.
+
+```{r, echo=FALSE}
+#| warning: false
+#| label: fig-risktypefreq
+#| fig-cap: "Bar graph for risk type"
+ggplot(Fire_Incidents_Data_Clean, aes(x = Risk_type)) + geom_bar()+
+  labs(x = "Risk Type", y = "Number of Incidents") + ylim(0, 8000) +
+  theme_minimal()
+```
+
+@fig-alarmtoarrival shows the histogram for alarm to arrival time. It was calculated by taking the difference between the time TFS arrived at the incident and the time when TFS was notified. The histogram shows the minutes range from less than 5 to more than 200 minutes. The data shows the approximately normal distribution.
+
+```{r, echo=FALSE}
+#| warning: false
+#| label: fig-alarmtoarrival
+#| fig-cap: "Histogram of Alarm to Arrival Time"
+ggplot(Fire_Incidents_Data_Clean, aes(x = alarm_to_arrival_time)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(x = "Alarm to Arrival Time (minutes)",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+@fig-arrivaltofire shows the histogram for arrival to fire control time. It was calculated by taking the difference between the time the fire was completely controlled and the time TFS arrived at the incident. The histogram shows the hours range from 0.1 to 30 hours. The data shows the non normal distribution.
+
+```{r, echo=FALSE}
+#| warning: false
+#| label: fig-arrivaltofire
+#| fig-cap: "Histogram of Alarm to Arrival Time"
+ggplot(Fire_Incidents_Data_Clean, aes(x = arrival_to_fire_control_time)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(x = "Arrival to Fire Control Time (hours)",
+       y = "Frequency") +
+  theme_minimal()
+```
+
+## Models:
+
+We performed logistic regression to determine the relationship between fire incidents and various independent variables. We will also perform backward elimination to select the most significant variables.
+
+### Logistic Regression Model:
+
+The binary response variable in question is representative of the categorization of fire incidents based on their risk level. In this context, the designation Y = 1 denotes a high-risk incident, whereas Y = 0 signifies a low to moderate-risk incident. The independent variables (X1, X2, . , Xp) utilized in the model comprise building status, business impact, fire alarm system functionality, method of fire control, presence of smoke alarm at fire origin, the existence of a sprinkler system, time taken to arrive at the scene of the fire, time elapsed from alarm activation to arrival, the number of responding apparatus, and the number of responding personnel. The logistic regression model can be written as:
+
+$$
+\begin{aligned}
+\mathrm{logit}(Risk type) = \beta_0 + \beta_1^{\mathrm{Building Status}} + \beta_2^{\mathrm{Business Impact}} + \beta_3^{\mathrm{Fire Alarm System Operation}} \\ 
++ \beta_4^{\mathrm{Method of Fire Control}} + \beta_5^{\mathrm{Smoke Alarm at Fire Origin}}+ \beta_6^{\mathrm{Sprinkler System Presence}}+ \beta_7^{\mathrm{Alarm to arrival time}} \\
++ \beta_8^{\mathrm{Arrival to fire control time}}+ \beta_9^{\mathrm{Number of responding apparatus}}+ \beta_{10}^{\mathrm{Number of responding personnel}}
+\end{aligned}
+$$ where p is the probability of a fire incident being high risk, and $\beta_0$, $\beta_1$, ..., $\beta_p$ are the regression coefficients estimated by the model.
+
+### Linear Regression Models:
+
+I used two linear regression models, for estimated dollar loss and for number of casualties in a fire incident. Let X1, X2, ..., Xp be the independent variables used in the model, The linear regression model can be written as:
+
+$$ 
+\begin{aligned}
+y_i|\mu_i, \sigma &\sim \mathrm{Normal}(\mu_i, \sigma)\\
+Estimated dollar loss = \beta_0 + \beta_1 \times \mathrm{Building Status} + \beta_2 \times \mathrm{Business Impact} \\
++ \beta_3 \times \mathrm{Fire Alarm System Operation} + \beta_4 \times \mathrm{Method of Fire Control}\\ 
++ \beta_5 \times \mathrm{Smoke Alarm at Fire Origin}+ \beta_6 \times \mathrm{Sprinkler System Presence}\\
++ \beta_7 \times \mathrm{Alarm to arrival time} + \beta_8 \times \mathrm{Arrival to fire control time}\\
++ \beta_9 \times \mathrm{Number of responding apparatus}+ \beta_{10} \times \mathrm{Number of responding personnel}
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+y_i|\mu_i, \sigma &\sim \mathrm{Normal}(\mu_i, \sigma)\\
+Number of casualties = \beta_0 + \beta_1 \times \mathrm{Building Status} + \beta_2 \times \mathrm{Business Impact} \\
++ \beta_3 \times \mathrm{Fire Alarm System Operation} + \beta_4 \times \mathrm{Method of Fire Control} \\
++ \beta_5 \times \mathrm{Smoke Alarm at Fire Origin}+ \beta_6 \times \mathrm{Sprinkler System Presence}\\
++ \beta_7 \times \mathrm{Alarm to arrival time}+ \beta_8 \times \mathrm{Arrival to fire control time}\\
++ \beta_9 \times \mathrm{Number of responding apparatus}+ \beta_{10} \times \mathrm{Number of responding personnel}
+\end{aligned}
+$$
+
+where $\beta_0$, $\beta_1$, ..., $\beta_p$ are the regression coefficients estimated by the model.
+
+The selection of these models is deemed suitable for the given dataset and research inquiry, as they facilitate the determination of the impact of numerous independent variables on a binary or continuous dependent variable. The models are constructed utilizing the stepwise elimination technique, a method employed for the purpose of variable selection. The applicability of this method to the dataset is justified by the presence of a substantial quantity of independent variables. The final models were constructed by incorporating only those variables that demonstrated a statistically significant impact on the dependent variable. This approach was taken in order to streamline the models and enhance their comprehensibility.
+
+# Results
+
+The @fig-bargraph shows that 75% of incidents that may not resume business are classified as moderate to high risk, while only 25% are classified as low or very low risk. On the other hand, 50% of incidents that may resume business are classified as moderate to high risk, while 25% are with no interruption in business classified as high or very high risk. The fire control category is also strongly associated with the risk type, the automated fire control was about 25% high risk type compared to others. Also, more than 50% of incidents with a no sprinkler system are classified as moderate risk, while 25% are classified as high or very high risk. Overall, the table shows that the risk type of a fire incident is strongly associated with several independent variables, including business impact, fire control, and system presence.
+
+```{r, echo=FALSE, fig.height=7, fig.width=6}
+#| warning: false
+#| label: fig-bargraph
+#| fig-cap: "Bar graphs for assocition between risk type and independent variables"
+# Create individual plots
+p1 <- ggplot(Fire_Incidents_Data_Clean, aes(x = Building_Status_Cat, fill = Risk_type)) +
+  geom_bar(position = "fill") + scale_x_discrete(guide= guide_axis(n.dodge=3)) +
+  labs(x = "Building Status Category", y = "Proportion of Incidents", fill = "Risk Type") +
+  theme(legend.title = element_text(size=5), legend.text= element_text(size=5), axis.text= element_text(size=5), axis.title = element_text(size=5))
+
+p2 <- ggplot(Fire_Incidents_Data_Clean, aes(x = Business_Impact_Cat, fill = Risk_type)) +
+  geom_bar(position = "fill") + scale_x_discrete(guide= guide_axis(n.dodge=2)) +
+  labs(x = "Business Impact Category", y = "Proportion of Incidents", fill = "Risk Type") +
+  theme(legend.title = element_text(size=5), legend.text= element_text(size=5), axis.text= element_text(size=5), axis.title = element_text(size=5))
+
+p3 <- ggplot(Fire_Incidents_Data_Clean, aes(x = Fire_Alarm_System_Operation_Cat, fill = Risk_type)) +
+  geom_bar(position = "fill") + scale_x_discrete(guide= guide_axis(n.dodge=2)) +
+  labs(x = "Fire Alarm System Operation Category", y = "Proportion of Incidents", fill = "Risk Type") +
+  theme(legend.title = element_text(size=5), legend.text= element_text(size=5), axis.text= element_text(size=5), axis.title = element_text(size=5))
+
+p4 <- ggplot(Fire_Incidents_Data_Clean, aes(x = Method_Of_Fire_Control_Cat, fill = Risk_type)) +
+  geom_bar(position = "fill") + scale_x_discrete(guide= guide_axis(n.dodge=2)) +
+  labs(x = "Method of Fire Control Category", y = "Proportion of Incidents", fill = "Risk Type") +
+  theme(legend.title = element_text(size=5), legend.text= element_text(size=5), axis.text= element_text(size=5), axis.title = element_text(size=5))
+
+p5 <- ggplot(Fire_Incidents_Data_Clean, aes(x = Smoke_Alarm_at_Fire_Origin_Cat, fill = Risk_type)) +
+  geom_bar(position = "fill") + scale_x_discrete(guide= guide_axis(n.dodge=2)) +
+  labs(x = "Smoke Alarm at Fire Origin Category", y = "Proportion of Incidents", fill = "Risk Type") +
+  theme(legend.title = element_text(size=5), legend.text= element_text(size=5), axis.text= element_text(size=5), axis.title = element_text(size=5))
+
+p6 <- ggplot(Fire_Incidents_Data_Clean, aes(x = Sprinkler_System_Presence_Cat, fill = Risk_type)) +
+  geom_bar(position = "fill") + scale_x_discrete(guide= guide_axis(n.dodge=2)) +
+  labs(x = "Sprinkler System Presence Category", y = "Proportion of Incidents", fill = "Risk Type") +
+  theme(legend.title = element_text(size=5), legend.text= element_text(size=5), axis.text= element_text(size=5), axis.title = element_text(size=5))
+
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 2) 
+
+```
+
+The chi-square tests @tbl-chisquare show that building status, business impact, fire alarm system operation, method of fire control, smoke alarm at fire origin, and sprinkler system presence all have p-values less than 0.05, indicating that there are significant differences in the distribution of these variables between high-risk and low-to-moderate risk fire incidents.
+
+```{r, warning=FALSE, echo=FALSE}
+#| label: tbl-chisquare
+#| tbl-cap: "Chi-square results for association between independent variables and risk type"
+
+# Chi-square test for Building_Status_Cat
+chisq_test_building_status <- chisq.test(Fire_Incidents_Data_Clean$Building_Status_Cat, Fire_Incidents_Data_Clean$Risk_type)
+
+
+# Chi-square test for Business_Impact_Cat
+chisq_test_business_impact <- chisq.test(Fire_Incidents_Data_Clean$Business_Impact_Cat, Fire_Incidents_Data_Clean$Risk_type)
+
+
+# Chi-square test for Fire_Alarm_System_Operation_Cat
+chisq_test_fire_alarm <- chisq.test(Fire_Incidents_Data_Clean$Fire_Alarm_System_Operation_Cat, Fire_Incidents_Data_Clean$Risk_type)
+
+
+# Chi-square test for Method_Of_Fire_Control_Cat
+chisq_test_fire_control <- chisq.test(Fire_Incidents_Data_Clean$Method_Of_Fire_Control_Cat, Fire_Incidents_Data_Clean$Risk_type)
+
+# Chi-square test for Smoke_Alarm_at_Fire_Origin_Cat
+chisq_test_smoke_alarm <- chisq.test(Fire_Incidents_Data_Clean$Smoke_Alarm_at_Fire_Origin_Cat, Fire_Incidents_Data_Clean$Risk_type)
+
+
+# Chi-square test for Sprinkler_System_Presence_Cat
+chisq_test_sprinkler <- chisq.test(Fire_Incidents_Data_Clean$Sprinkler_System_Presence_Cat, Fire_Incidents_Data_Clean$Risk_type)
+
+
+# Chi-square tests table
+chi_square_table <- data.frame(
+  Variable = c("Building_Status_Cat", "Business_Impact_Cat", "Fire_Alarm_System_Operation_Cat", "Method_Of_Fire_Control_Cat", "Smoke_Alarm_at_Fire_Origin_Cat", "Sprinkler_System_Presence_Cat"),
+  Df = c(12, 12, 12, 12, 12, 12),
+  X2 = sapply(list(chisq_test_building_status, chisq_test_business_impact, chisq_test_fire_alarm, chisq_test_fire_control, chisq_test_smoke_alarm, chisq_test_sprinkler), function(x) x$statistic),
+  p_value = sapply(list(chisq_test_building_status, chisq_test_business_impact, chisq_test_fire_alarm, chisq_test_fire_control, chisq_test_smoke_alarm, chisq_test_sprinkler), function(x) x$p.value)
+)
+rownames (chi_square_table) <- c("Building Status", "Business Impact", "Fire alarm system operation", "method of fire control", "smoke alarm at fire origin", "Sprinkler system presence")
+chi_square_table |> kable (col.names = c("Variables","DF", "Chi-square value", "p-value"), digits =2, format.args = list(big.mark = ","), booktabs = TRUE) |> kable_styling()
+```
+
+The line graph in @fig-linealarmtoarrival shows the association between the risk type and alarm to arrival time in minutes for fire incidents. The alarm to arrival time is grouped into intervals of 100 minutes. The chart shows that as the alarm to arrival time increases, the proportion of very low and low-risk incidents decreases, while the proportion of moderate and very high-risk incidents increases. Specifically, there are no very low-risk incidents with an alarm to arrival time greater than 15 minutes, and the moderate to very high-risk incidents increases at an alarm to arrival time more than 15 minutes. Overall, the chart suggests that a longer alarm to arrival time is associated with a higher risk of fire incidents outcomes.
+
+```{r, echo=FALSE}
+#| warning: false
+#| label: fig-linealarmtoarrival
+#| fig-cap: "Line graph shows comparison of alarm to arrival time between various types of risk"
+
+ ggplot(Fire_Incidents_Data_Clean) + aes(x= Risk_type, y=alarm_to_arrival_time, color =Risk_type) + geom_jitter() +labs(title = "Association of alarm to arrival time with risk type", x = "Risk type", y = "Alarm to Arrival Time (minutes)")
+                                                                                                                       
+```
+
+The line graph in @fig-linearrivaltofire shows the association between the risk type and arrival to fire time in hours for fire incidents. The arrival to fire time is grouped into intervals of 10 hours. The chart shows that as the arrival to fire time increases, very low and low-risk incidents decreases, while the proportion of moderate and very high-risk incidents increases. Specifically, there are no very low-risk incidents with an alarm to arrival time greater than 10 hours, and the moderate to very high-risk incidents increases at an alarm to arrival time more than 10 hours. Overall, the chart suggests that a longer arrival to fire time is associated with a higher risk of fire incidents outcome.
+
+```{r, echo=FALSE}
+#| warning: false
+#| label: fig-linearrivaltofire
+#| fig-cap: "Line graph shows comparison of fire control time with type of risk"
+ggplot(Fire_Incidents_Data_Clean) + aes(x= Risk_type, y=arrival_to_fire_control_time, color =Risk_type) + geom_jitter() +labs(  x = "Risk type",  y = "Arrival to fire control time (hours)")
+```
+
+For the continuous variables, the F-tests show in @tbl-anova that arrival to fire control time, alarm to arrival time, number of responding apparatus, and number of responding personnel all have p-values less than 0.05, indicating that there are significant differences in the distribution of these variables between high-risk and low-to-moderate risk fire incidents.
+
+```{r, echo=FALSE}
+#| label: tbl-anova
+#| tbl-cap: "ANOVA results from comparison between independent variables and risk type"
+# Perform ANOVA tests
+anova_tests <- list(
+  anova_arrival_to_fire_control_time = oneway.test(arrival_to_fire_control_time ~ Risk_type, data = Fire_Incidents_Data_Clean),
+  anova_alarm_to_arrival_time = oneway.test(alarm_to_arrival_time ~ Risk_type, data = Fire_Incidents_Data_Clean),
+  anova_number_of_responding_apparatus = oneway.test(Number_of_responding_apparatus ~ Risk_type, data = Fire_Incidents_Data_Clean),
+  anova_number_of_responding_personnel = oneway.test(Number_of_responding_personnel ~ Risk_type, data = Fire_Incidents_Data_Clean)
+)
+anova_results <- data.frame(F = sapply(anova_tests, function(x) x$statistic), p = sapply(anova_tests, function(x) x$p.value))
+rownames (anova_results) = c( "Arrival to fire control time", "Alarm to arrival time", "Number of responding appartaus", "Number of responding personnel")
+anova_results |> 
+ kable (col.names = c("F-value", "P-value"), digits =3, format.args = list(big.mark = ","), booktabs = TRUE)  |> kable_styling()
+```
+
+These findings indicate that these variables could play a significant role in forecasting the potential for a fire incident. Analyzing the connections between these factors and the type of risk associated with a fire incident can help us create plans to minimize the risk and consequences of fire incidents.
+
+@tbl-logistic utilized a logistic regression model to establish the correlation between risk type (high versus low to moderate) and various independent variables such as building status, business impact, functioning of fire alarm system, method of fire control, presence of smoke alarm at fire origin, existence of sprinkler system, time taken to arrive at fire control, and time taken from alarm to arrival. The findings indicate that the factors considered in the model are strong predictors of the type of risk associated with a fire incident (p-value < 0.05). The final predictors after stepwise elimination can be seen in @eq-logistic. The building status coefficient states that the normal residential building has exp(1.058)= 2.88 times likelihood for high fire risk impact compared to abandoned building. Similarly, the building which was being renovated or under construction has odds of exp(0.8410) = 2.31 times high have fire risk impact compared to abandon building. The positive coefficients for arrival to fire control time and alarm to arrival time show that longer times for fire control and alarm response are linked to increased likelihood of a high-risk fire incident. More precisely, for each additional minute it takes for fire control to arrive, the likelihood of a high-risk fire incident increases by exp(0.462) = 1.59. Similarly, for every extra minute it takes for the alarm to arrival, the likelihood of a high-risk fire incident increases by exp(0.034)= 1.03, 3%. Apart from these, the coefficient for business impact shows that, the business which may resume after the fire incident has exp(-0.012)= 0.988, 2% less likely to have high fore risk impact compared to thr business which may not resume after the incident. On the other hand, the buildings where no sprinkler installed has exp(0.591)= 1.806, 81% more likely to have high fire risk imapct compared to buildings with full sprinkler system installed.
+
+```{r, warning=FALSE, echo=FALSE}
+#| label: tbl-logistic
+#| tbl-cap: "Stepwise logistic regression model to predict high risk"
+
+# Recode Risk_type into Risk_type_cat to use in logistic regression
+Fire_Incidents_Data_Clean$Risk_type_cat <- recode(Fire_Incidents_Data_Clean$Risk_type,
+                                                  "Low" = "Low to Moderate Risk",
+                                                  "Moderate" = "Low to Moderate Risk",
+                                                  "Very Low" = "Low to Moderate Risk",
+                                                  "High" = "High Risk",
+                                                  "Very High" = "High Risk")
+
+# Recode Risk_type_cat as a binary variable
+Fire_Incidents_Data_Clean$Risk_type_binary <- ifelse(Fire_Incidents_Data_Clean$Risk_type_cat == "High Risk", 1, 0)
+
+# Run the logistic regression using stepwise elimination
+Stepwise_logistic <- readRDS(file = here::here("models/model1.rds"))
+
+
+kableExtra::kable(x=broom::tidy(Stepwise_logistic), format= "pipe", digits = 3)
+```
+
+$$
+\begin{aligned}
+\mathrm{logit}(Risk type) = \beta_0 + \beta_1^{\mathrm{Building Status}} + \beta_2^{\mathrm{Business Impact}}\\
++ \beta_3^{\mathrm{Fire Alarm System Operation}} + \beta_4^{\mathrm{Smoke Alarm at Fire Origin}}\\
++ \beta_5^{\mathrm{Sprinkler System Presence}}+ \beta_6^{\mathrm{Alarm to arrival time}} \\
++ \beta_7^{\mathrm{Arrival to fire control time}} + \beta_8^{\mathrm{Number of responding apparatus}}
+\end{aligned}
+$$ {#eq-logistic}
+
+@tbl-linear1 utilized a linear regression model to establish the connection between the projected financial loss in dollars and the variables acting independently. As the estimated loss of dollar was non normally distributed, we will used logarithm value of estimated dollar loss. The findings indicate that the factors considered in the model are strong predictors of the projected financial loss (p < 0.05). The final predictors after stepwise elimination can be seen in @eq-linear1. The coefficient for building impact states that projected financial loss increased by exp(0.424) = 1.528, 53% for a building that is under construction or renovation than compared to abandon building. Similarly, a building business may resume the estimated loss increased by exp(0.806) = 2.23 times compared to a building with no business operations. The negative coefficients for fire control methods such as a occupancy, self-extinguished, and undetermined indicate that these factors are connected to a lower estimated financial loss. More precisely, a building with occupant put off the fire and self-extinguished system the estimated dollar loss decreased by exp(-1.320) = 0.323, 32% and exp(-0.959 )= 0.383, 38% respectively. The positive coefficient for arrival time to fire control indicates that longer response times are linked to higher estimated financial losses. Put simply, for each additional minute it takes for the fire control team to arrive, the predicted financial loss goes up by exp(0.081) = 1.08, 8%.
+
+The positive coefficients for the number of responding apparatuses suggest that these factors are linked to a increase in estimated dollar loss. More precisely, an increase of one unit in the number of responding apparatus is associated with a increase of exp(0.073) = 1.076, 8% estimated dollar loss, while an increase of one unit in the number of responding personnel is associated with an increase of exp(0.014) = 1.014, 1% estimated dollar loss.
+
+```{r, echo=FALSE}
+#| label: tbl-linear1
+#| tbl-cap: "Stepwise linear regression model to predict estimated dollar loss"
+Fire_Incidents_Data_Clean$logEDL <- log(Fire_Incidents_Data_Clean$Estimated_Dollar_Loss)
+#Before performing regression I replaced any infinity value die to 0 value of estimated dollar loss as log(0)= -inf, with mean
+meanlogEDL <- mean(Fire_Incidents_Data_Clean$logEDL[which(Fire_Incidents_Data_Clean$logEDL>0)])
+Fire_Incidents_Data_Clean$logEDL <- ifelse(is.infinite(Fire_Incidents_Data_Clean$logEDL), meanlogEDL, Fire_Incidents_Data_Clean$logEDL)
+# Run the linear regression using stepwise elimination
+Stepwise_linear1 <- readRDS(file = here::here("models/model2.rds"))
+kableExtra::kable(x=broom::tidy(Stepwise_linear1), format= "pipe", digits = 3)
+
+```
+
+$$ 
+\begin{aligned}
+y_i|\mu_i, \sigma &\sim \mathrm{Normal}(\mu_i, \sigma) \\
+Estimated dollar loss = \beta_0 + \beta_1 \times \mathrm{Building Status} + \beta_2 \times \mathrm{Business Impact} \\
++ \beta_3 \times \mathrm{Fire Alarm System Operation} + \beta_4 \times \mathrm{Method of Fire Control} \\ 
++ \beta_5 \times \mathrm{Smoke Alarm at Fire Origin}+ \beta_6 \times \mathrm{Sprinkler System Presence} \\
++ \beta_7 \times \mathrm{Alarm to arrival time} + \beta_8 \times \mathrm{Arrival to fire control time} \\
++ \beta_9 \times \mathrm{Number of responding apparatus}+ \beta_{10}\times \mathrm{Number of responding personnel} \\
+\beta_0 &\sim \mathrm{Normal}(0, 38.91) \\
+\beta_1 &\sim \mathrm{Normal}(0, 25.59) \\
+\beta_2 &\sim \mathrm{Normal}(0, 27.85) \\
+\beta_3 &\sim \mathrm{Normal}(0, 7.14) \\
+\beta_4 &\sim \mathrm{Normal}(0, 16.18) \\
+\beta_5 &\sim \mathrm{Normal}(0, 7.02) \\
+\beta_6 &\sim \mathrm{Normal}(0, 7.85) \\
+\beta_7 &\sim \mathrm{Normal}(0, 3.09) \\
+\beta_8 &\sim \mathrm{Normal}(0, 1.43) \\
+\beta_9 &\sim \mathrm{Normal}(0, 2.50) \\
+\beta_{10} &\sim \mathrm{Normal}(0, 0.83) \\
+\sigma &\sim \mathrm{Exponential}(1.913) \\
+\end{aligned}
+$$ {#eq-linear1}
+
+The linear regression model in @tbl-linear2 was utilized to assess how the number of casualties relates to the independent variables. The findings indicate that the factors considered in the model are a strong predictor of the number of casualties (p < 0.05). The final predictors after step wise elimination can be seen in @eq-linear2. The casualty rate is 0.06 higher in a under construction or renovated building compared to abandon building. In the same vein, the casualty rate is 0.071 greater for a building where occupants themselves controlled the fire. Fewer casualties occur in areas where the smoke system is used and operated with a coefficient of 0.002. The positive coefficients for undetermined fire control method, undetermined smoke alarm at fire origin, and undetermined sprinkler system presence suggest that these factors are linked to an increased number of casualties. The negative coefficient for arrival time to fire control suggests that a decrease in casualties is linked to longer fire control times. Additionally, the data show that for each additional responding apparatus, there is a corresponding increase of 0.045 in casualties, while each additional responding personnel is associated with a decrease of 0.012.
+
+```{r, echo=FALSE}
+#| label: tbl-linear2
+#| tbl-cap: "Stepwise linear regression model to predict number of casualties"
+# Run the linear regression using stepwise elimination
+Stepwise_linear2 <- readRDS(file = here::here("models/model3.rds"))
+kableExtra::kable(x=broom::tidy(Stepwise_linear2), format= "pipe", digits = 3)
+```
+
+$$
+\begin{aligned}
+y_i|\mu_i, \sigma &\sim \mathrm{Normal}(\mu_i, \sigma)\\
+Number of casualties = \beta_0 + \beta_1 \times \mathrm{Building Status} + \beta_2 \times \mathrm{Business Impact} \\
++ \beta_3 \times \mathrm{Fire Alarm System Operation} + \beta_4 \times \mathrm{Method of Fire Control} \\
++ \beta_5 \times \mathrm{Smoke Alarm at Fire Origin}+ \beta_6 \times \mathrm{Sprinkler System Presence}\\
++ \beta_7 \times \mathrm{Arrival to fire control time}+ \beta_8 \times \mathrm{Number of responding apparatus} \\
++ \beta_9 \times \mathrm{Number of responding personnel} \\
+\beta_0 &\sim \mathrm{Normal}(0, 8.69) \\
+\beta_1 &\sim \mathrm{Normal}(0, 5.71) \\
+\beta_2 &\sim \mathrm{Normal}(0, 6.31) \\
+\beta_3 &\sim \mathrm{Normal}(0, 1.55) \\
+\beta_4 &\sim \mathrm{Normal}(0, 2.98) \\
+\beta_5 &\sim \mathrm{Normal}(0, 1.55) \\
+\beta_6 &\sim \mathrm{Normal}(0, 1.78) \\
+\beta_7 &\sim \mathrm{Normal}(0, 0.71) \\
+\beta_8 &\sim \mathrm{Normal}(0, 0.60) \\
+\beta_9 &\sim \mathrm{Normal}(0, 0.24) \\
+\sigma &\sim \mathrm{Exponential}(0.430) \\
+\end{aligned}
+$$ {#eq-linear2}
+
+# Discussion:
+
+This paper evaluates the data on Fire Incidents Data for the City of Toronto to find the relationship between risk from fire incidents and various independent variables. The research find out that the risk of causalities and monetary loss is associated with the variables like building status, business impact, smoke alarm origin, method of fire control etc. The research utilized regression model like logistic regression and linear regression to predict the expected financial loss and human casualties associated with fire incidents. Moreover, our study utilized chi-square tests, ANOVA tests, and step wise elimination techniques to find the potential predictor for high risk. The results of this investigation have substantial ramifications for the protection of the public and the application of prevention strategies, and they significantly add to the body of knowledge already available on fire events.
+
+## Summary of Key Findings
+
+Furthermore, our study has demonstrated that the period of interval between the sounding of the alarm and the timing of arrival for fire officials as a major predictor of fire events, highlighting the crucial significance of an early reaction. The same has been find the time of fire fighter arrival and fire control time.The outcomes of our linear regression study show that these factors have a major impact on both the anticipated monetary damages and the overall number of casualties. In a similar manner a study by @challands2010relationships also confirmed that with delay in fire fighter response time at the incident result in greater monetary loss. The report also found that with increase in number of fire fighter personnel at the fire incident location, the number of causality decreases. A study by @shoffner2023firefighter done in United states and Canada found the same results that with increase in fire fighter personnel the human causalities and property loss in dollars decreased significantly.
+
+## Insights into Fire Incident Risk Factors
+
+The one of the significant factor is to reduce the response time to mitigate the impact of fire on human causalities and property loss. It is essential to make sure that the fire department has all necessary instruments and man power to respond quickly to these situations. The use of real time data analytics and predictive modelling can further help fire departments to respond timely to these situations. Apart from this the fire department should prioritize the necessary community education, fire drills and dispense resources to offices, school's and residential buildings.
+
+## Impact of Building Design and Safety Measures
+
+The design of buildings and safety measures implemented by building management have a crucial impact on fire incidents. It is important for building designers and engineers to prioritize safety measures during the design and construction phases. Several measurable steps can be taken to prevent such incidents in the future, including the use of fire-resistant materials in construction and the proper installation of sprinkler systems and smoke alarms. Beyond installing necessary alarms, it is also important to regularly test these alarms to ensure they function properly. Hence, routine inspections, testing, and maintenance of fire safety systems, along with the use of fire-resistant materials and strategic smoke alarm placement, can significantly enhance building safety.
+
+## Limitations and Future Research
+
+The present study is subject to certain limitations, as it did not take into account all relevant factors for the analysis of the risk impact of fire incidents. This study lacks key variables including building type and composition, accessibility to fire extinguishers, and the level of training of the fire fighters involved in reporting on fire incidents, thus hampering a comprehensive analysis. Future research endeavors may involve the analysis of extensive dataset and the inclusion of a broader range of geographical areas to yield more generalized results. It is important to thoroughly assess the effectiveness of various fire protection measures, such as fire evacuation education, construction regulations and norms, and inspections necessary fire safety using fire drills. In addition to evaluating the possible advantages of technical advancements in boosting the quickness and effectiveness of fire identification and response systems, future research may look at the impact of rising temperatures on the frequency and intensity of wildfires.
+
+## Conclusion
+
+In conclusion, this study examined Toronto fire incident data and projected the anticipated financial loss and number of casualties using a number of independent variables. The findings indicate that a number of variables are significant in forecasting fire events, including building conditions, the influence on nearby companies, the efficacy of fire alarm systems, firefighting techniques, and the installation of smoke detectors at the scene of the disaster. The research project stressed the significance of prompt reaction times and demonstrated how the anticipated loss of revenue and fatalities were impacted by the amount of duration it took to get at the scene and contain the fire, as well as by the time it took to arrive after the alarm was raised. Comprehending these variables is essential for firefighters in order to effectively allocate personnel and formulate strategies for both prevention and response to fire incidents.
+
+\newpage
+
+# References:
