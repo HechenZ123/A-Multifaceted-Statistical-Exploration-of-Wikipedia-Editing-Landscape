@@ -19,4 +19,4 @@ The repo is structured as:
 
 ## Statement on LLM usage
 
-Aspects of the code were written with the help of the ChatGPT, and the entire chat history is available in others/llm/llm.txt. The abstract and introduction were not written with any help of chat tools or auto-complete tools. Grammarly was used to check grammar. 
+Aspects of the code were written with the help of the ChatGPT, and the entire chat history is available in others/llm/llm.txt. 
