@@ -127,7 +127,7 @@ nrow(Fire_Incidents_Data_Clean)
 
 ## Measurements:
 
-The measurement of this study involves creating new variables and recoding existing ones to better understand their relationship with fire incidents. We created a new variable for risk type based on the criteria of civilian casualties, and estimated dollar loss. The risk type was divided into five categories Low, very low, moderate, high, and very high. We also recorded existing variables such as building status, business impact, fire alarm system operation, method of fire control, smoke alarm at fire origin, and sprinkler system presence into categorical variables. We alos calculated the difference between TFS arrival time and TFS alarm time to determine the alarm to arrival time and the difference between fire under control time and TFS arrival time to determine the arrival to fire control time.
+The measurement of this study involves creating new variables and recoding existing ones to better understand their relationship with fire incidents. We created a new variable for risk type based on the criteria of civilian casualties, and estimated dollar loss. The risk type was divided into five categories Low, very low, moderate, high, and very high. We also recorded existing variables such as building status, business impact, fire alarm system operation, method of fire control, smoke alarm at fire origin, and sprinkler system presence into categorical variables. We also calculated the difference between TFS arrival time and TFS alarm time to determine the alarm to arrival time and the difference between fire under control time and TFS arrival time to determine the arrival to fire control time.
 
 ```{r, results='hide', echo=FALSE}
 # Create a new variable Risk_Type based on the criteria
